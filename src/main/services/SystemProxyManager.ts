@@ -44,7 +44,7 @@ export interface ISystemProxyManager {
  * 系统代理管理器基类
  */
 export abstract class SystemProxyBase implements ISystemProxyManager {
-  protected originalSettings: SystemProxyStatus | null = null;
+  protected originalSettings: any | null = null;
 
   abstract enableProxy(address: string, httpPort: number, socksPort: number): Promise<void>;
   abstract disableProxy(): Promise<void>;

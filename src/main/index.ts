@@ -1161,7 +1161,7 @@ app.on('will-quit', async (_event) => {
 });
 
 // Windows 关机/注销时触发
-app.on('session-end', () => {
+(app as any).on('session-end', () => {
   console.log('Received session-end (Windows shutdown/logoff), running sync cleanup...');
   if (systemProxyManager) {
     systemProxyManager.disableProxySync();
