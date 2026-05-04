@@ -58,7 +58,8 @@ const DOMESTIC_BANK_AND_STOCK_DOMAINS = [
   '.icbc.com.cn', // 工商银行
   '.boc.cn', // 中国银行
   '.ccb.com', // 建设银行
-  '.abchina.com', '.abchina.com.cn', // 农业银行
+  '.abchina.com',
+  '.abchina.com.cn', // 农业银行
   '.bankcomm.com', // 交通银行
   '.cmbchina.com', // 招商银行
   '.psbc.com', // 邮储银行
@@ -72,13 +73,13 @@ const DOMESTIC_BANK_AND_STOCK_DOMAINS = [
   '.hzbank.com.cn', // 杭州银行
 
   // 证券炒股软件相关（经常使用定制化的 TCP 二进制协议通信，在 SOCKS/HTTP 系统代理模式下会导致握手失败并被代理核心主动断开）
-  '.10jqka.com.cn', '.thsi.cn', // 同花顺
-  '.eastmoney.com', '.1234567.com.cn', // 东方财富
+  '.10jqka.com.cn',
+  '.thsi.cn', // 同花顺
+  '.eastmoney.com',
+  '.1234567.com.cn', // 东方财富
   '.gw.com.cn', // 大智慧
   '.tdx.com.cn', // 通达信
 ];
-
-
 
 /**
  * sing-box 1.12.x / 1.13.x 配置类型定义
@@ -1033,7 +1034,8 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
 
       // 恢复至对应平台最稳定的网段。Windows 在 v3.4.0 使用 /16 时非常完美；Mac 在 v3.3.18 使用 /30 时最完美。
       const tunAddress = [
-        config.tunConfig?.inet4Address || (process.platform === 'darwin' ? '172.19.0.1/30' : '172.19.0.1/16'),
+        config.tunConfig?.inet4Address ||
+          (process.platform === 'darwin' ? '172.19.0.1/30' : '172.19.0.1/16'),
       ];
       // macOS 默认分配 IPv6 以提高与本地网络服务的兼容性，与 3.3.18 保持一致
       if (config.enableIPv6 && process.platform !== 'darwin') {
@@ -1420,7 +1422,7 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
     if (server.protocol === 'http') {
       if (server.username) outbound.username = server.username;
       if (server.password) outbound.password = server.password;
-      
+
       // HTTP outbound headers mapping can be added if needed via server.httpSettings.headers
       if (server.httpSettings?.headers) {
         if (!outbound.transport) outbound.transport = { type: 'http' };
@@ -1576,23 +1578,10 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
       outbound: 'direct',
     });
 
-    // 绝杀级修复 E -> Top：DNS 劫持必须具有至高无上的优先级。
-    // 如果被 D 部分的 direct 规则抢先匹配，DNS 请求将直接泄漏出公网从而被 GFW 污染。
-    rules.push({
-      port: [53],
-      action: 'hijack-dns',
-    });
-
-    // B. 强制本地直连规则（解决拓扑空白、局域网访问问题）
-    // 优先级极高，确保 127.0.0.1 和局域网流量永不进代理
-    rules.push({
-      ip_cidr: ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '::1/128'],
-      action: 'route',
-      outbound: 'direct',
-    });
-    // D. 强制引导核心 DNS 直连 (阿里/腾讯/114)，防止解析代理节点域名时产生死循环
-    // 覆盖了常见的 DNS IP 以及 53/443 端口
-    // 注意：必须在任何代理规则之前，确保 bootstrap dns 永远走物理网卡
+    // C. 强制引导核心 DNS 直连（必须在 hijack-dns 之前！）
+    // sing-box 以提升权限运行时，process_name 检测可能因权限问题失败，
+    // 导致 sing-box 自身的 223.5.5.5:53 查询被 hijack-dns 劫持返回 FakeIP，引发死循环。
+    // 把已知 bootstrap DNS IP 放在 hijack-dns 之前，无论哪个进程发包都走直连，彻底断环。
     rules.push({
       ip_cidr: [
         '223.5.5.5/32',
@@ -1602,6 +1591,20 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
         '114.114.114.114/32',
       ],
       port: [53, 443],
+      action: 'route',
+      outbound: 'direct',
+    });
+
+    // D. DNS 劫持（必须在引导 DNS IP 直连之后）
+    // 劫持所有其余 port 53 流量（浏览器/系统 DNS），返回 FakeIP
+    rules.push({
+      port: [53],
+      action: 'hijack-dns',
+    });
+
+    // B. 强制本地直连规则
+    rules.push({
+      ip_cidr: ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '::1/128'],
       action: 'route',
       outbound: 'direct',
     });
@@ -1780,8 +1783,6 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
         outbound: 'direct',
       });
     }
-
-
 
     // 1. 私有 IP 段直连（内网地址不应该经过代理，优先级最高）
     // 仅当用户未关闭"绕过局域网"时添加
@@ -3930,11 +3931,12 @@ export class ProxyManager extends EventEmitter implements IProxyManager {
         //   *.domain.com → WinINet 标准格式（传统 C++ 应用如同花顺/网银客户端）
         //   *domain.com  → Chrome/Chromium 内核专用格式（无点前缀，解决 Chrome 不认带点通配符的问题）
         //   domain.com   → 精确根域名匹配（兜底，确保根域名本身也被旁路）
-        const domainBypassEntries = DOMESTIC_BANK_AND_STOCK_DOMAINS.flatMap(d => {
+        const domainBypassEntries = DOMESTIC_BANK_AND_STOCK_DOMAINS.flatMap((d) => {
           const base = d.startsWith('.') ? d.slice(1) : d;
           return [`*.${base}`, `*${base}`, base];
         }).join(';');
-        const bypassDomains = '<local>;localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;' +
+        const bypassDomains =
+          '<local>;localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;' +
           domainBypassEntries;
         await runCommand(
           `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyOverride /t REG_SZ /d "${bypassDomains}" /f`

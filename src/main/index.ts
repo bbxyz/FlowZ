@@ -1160,6 +1160,21 @@ app.on('will-quit', async (_event) => {
   }
 });
 
+// Windows 关机/注销时触发
+app.on('session-end', () => {
+  console.log('Received session-end (Windows shutdown/logoff), running sync cleanup...');
+  if (systemProxyManager) {
+    systemProxyManager.disableProxySync();
+  }
+});
+
+// 在进程真正退出时，做最后的同步兜底清理
+process.on('exit', () => {
+  if (systemProxyManager) {
+    systemProxyManager.disableProxySync();
+  }
+});
+
 // 处理 SIGINT 和 SIGTERM 信号
 process.on('SIGINT', async () => {
   console.log('Received SIGINT, cleaning up...');
