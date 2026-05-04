@@ -6,7 +6,8 @@
     "save": "保存",
     "reset": "重置",
     "actions": "操作",
-    "copyFail": "复制失败"
+    "copyFail": "复制失败",
+    "loading": "加载中..."
   },
   "sidebar": {
     "home": "首页",
@@ -265,7 +266,9 @@
         "importConfirmTitle": "确认恢复配置",
         "importConfirmDesc": "此操作将完全覆盖当前的节点、订阅和规则配置，且无法撤销。请确认您已了解风险后再继续。",
         "importConfirmBtn": "确认覆盖恢复"
-      }
+      },
+      "autoSwitchNode": "节点故障自动切换",
+      "autoSwitchNodeDesc": "当当前代理连接失败时，自动切换到可用节点"
     },
     "about": {
       "title": "关于",

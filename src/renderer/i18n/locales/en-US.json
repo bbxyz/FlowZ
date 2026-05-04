@@ -6,7 +6,8 @@
     "save": "Save",
     "reset": "Reset",
     "actions": "Actions",
-    "copyFail": "Copy failed"
+    "copyFail": "Copy failed",
+    "loading": "Loading..."
   },
   "sidebar": {
     "home": "Home",
@@ -266,7 +267,9 @@
         "importConfirmTitle": "Confirm Restore",
         "importConfirmDesc": "This will completely overwrite your current nodes, subscriptions, and rules. This action cannot be undone. Please confirm before proceeding.",
         "importConfirmBtn": "Confirm & Restore"
-      }
+      },
+      "autoSwitchNode": "Auto-Switch Node on Failure",
+      "autoSwitchNodeDesc": "Automatically switch to an available node if the current proxy connection fails"
     },
     "about": {
       "title": "About",
